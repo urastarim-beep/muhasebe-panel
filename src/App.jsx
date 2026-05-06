@@ -65,27 +65,32 @@ const SEED_2026 = {
 };
 const INITIAL_ALL_DATA = { 2026: SEED_2026 };
 
-// ─── Drive ────────────────────────────────────────────────────────────────────
-function withTimeout(p,ms){ return Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error("timeout")),ms))]); }
-async function callDrive(msg){
-  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,
-      mcp_servers:[{type:"url",url:"https://drivemcp.googleapis.com/mcp/v1",name:"gdrive"}],
-      messages:[{role:"user",content:msg}]})});
-  return r.json();
+
+// ─── Google Sheets Config ─────────────────────────────────────────────────────
+const SHEET_ID = '1bfv4hrtrUJr5L6mHJi9LTtIZcOBYA7YL5vMh0TV0PtI';
+const API_KEY  = 'AIzaSyDWAcNRKmgfY-ro0KtpMh2f9BKxdKf7B4w';
+const RANGE    = 'Sayfa1!A1';
+const BASE     = 'https://sheets.googleapis.com/v4/spreadsheets';
+
+async function loadFromSheets() {
+  const url = `${BASE}/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('sheets_read_failed');
+  const d = await r.json();
+  const raw = d.values?.[0]?.[0];
+  if (!raw) return null;
+  return JSON.parse(raw);
 }
-function exJSON(t){
-  try{ const c=t.replace(/```json|```/g,"").trim(),s=c.indexOf("{"),e=c.lastIndexOf("}");
-    if(s!==-1&&e!==-1) return JSON.parse(c.slice(s,e+1)); }catch{}return null;
-}
-async function findFile(){ const r=await withTimeout(callDrive(`Drive'da "${DRIVE_FILE_NAME}" dosyasını bul. Sadece JSON: {"fileId":"...","found":true} veya {"found":false}`),DRIVE_TIMEOUT_MS); return exJSON(r.content?.filter(b=>b.type==="text").map(b=>b.text).join("")||"")||{found:false}; }
-async function readFile(fid){ const r=await withTimeout(callDrive(`Drive fileId="${fid}" dosyasını oku, sadece JSON içeriğini döndür.`),DRIVE_TIMEOUT_MS); return exJSON(r.content?.filter(b=>b.type==="text").map(b=>b.text).join("")||""); }
-async function saveFile(data,fid){
-  const json=JSON.stringify(data,null,2);
-  const p=fid?`Drive fileId="${fid}" dosyasını şu içerikle güncelle:\n${json}\nSadece: {"success":true} veya {"success":false,"error":"..."}`:
-    `Drive'da "${DRIVE_FILE_NAME}" yeni dosya oluştur:\n${json}\nSadece: {"success":true,"fileId":"..."} veya {"success":false,"error":"..."}`;
-  const r=await withTimeout(callDrive(p),DRIVE_TIMEOUT_MS);
-  return exJSON(r.content?.filter(b=>b.type==="text").map(b=>b.text).join("")||"")||{success:false};
+
+async function saveToSheets(data) {
+  const url = `${BASE}/${SHEET_ID}/values/${RANGE}?valueInputOption=RAW&key=${API_KEY}`;
+  const r = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ range: RANGE, majorDimension: 'ROWS', values: [[JSON.stringify(data)]] })
+  });
+  if (!r.ok) throw new Error('sheets_write_failed');
+  return true;
 }
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
@@ -601,7 +606,7 @@ export default function App() {
   const [allData,      setAllData]      = useState(INITIAL_ALL_DATA);
   const [defaultYear,  setDefaultYear]  = useState(2026);
   const [activeYear,   setActiveYear]   = useState(2026);
-  const [driveFileId,  setDriveFileId]  = useState(null);
+  // driveFileId removed - using Sheets
   const [driveStatus,  setDriveStatus]  = useState("loading");
   const [tab,          setTab]          = useState("panel");
   const [search,       setSearch]       = useState("");
@@ -618,27 +623,22 @@ export default function App() {
   const loadDrive = useCallback(async()=>{
     setDriveStatus("loading");
     try{
-      const found=await findFile();
-      if(found.found&&found.fileId){
-        const d=await readFile(found.fileId);
-        if(d&&typeof d==="object"){
-          // normalize: keys as numbers + handle settings
-          const normalized={};
-          let savedDefault=null;
-          for(const [k,v] of Object.entries(d)){
-            if(k==="__settings") { savedDefault=v?.defaultYear; continue; }
-            normalized[Number(k)]=v;
-          }
-          setAllData(prev=>({...prev,...normalized}));
-          setDriveFileId(found.fileId);
-          if(savedDefault){ setDefaultYear(savedDefault); setActiveYear(savedDefault); }
-          setDriveStatus("saved");
-          showToast("Drive'dan yüklendi ✓","success");
-          return;
+      const d = await loadFromSheets();
+      if(d && typeof d === 'object'){
+        const normalized={};
+        let savedDefault=null;
+        for(const [k,v] of Object.entries(d)){
+          if(k==="__settings"){ savedDefault=v?.defaultYear; continue; }
+          normalized[Number(k)]=v;
         }
+        setAllData(prev=>({...prev,...normalized}));
+        if(savedDefault){ setDefaultYear(savedDefault); setActiveYear(savedDefault); }
+        setDriveStatus("saved");
+        showToast("Sheets'ten yüklendi ✓","success");
+        return;
       }
       setDriveStatus("offline");
-      showToast("Drive'da kayıt bulunamadı","info");
+      showToast("Sheets'te kayıt bulunamadı","info");
     }catch(e){
       setDriveStatus(e.message==="timeout"?"timeout":"error");
       showToast("Drive bağlantı hatası","error");
@@ -654,14 +654,14 @@ export default function App() {
       setDriveStatus("saving");
       const payload={...newAll,__settings:{defaultYear:newDefault}};
       try{
-        const r=await saveFile(payload,fid);
-        if(r.success){ if(r.fileId&&!fid) setDriveFileId(r.fileId); setDriveStatus("saved"); }
+        const ok=await saveToSheets(payload);
+        if(ok){ setDriveStatus("saved"); }
         else{ setDriveStatus("error"); showToast("Kayıt hatası","error"); }
       }catch(e){ setDriveStatus(e.message==="timeout"?"timeout":"error"); showToast("Drive kayıt hatası","error"); }
     },1500);
   },[]);
 
-  const mutate=(fn)=>{ setAllData(prev=>{ const next=fn(prev); debouncedSave(next,defaultYear,driveFileId); return next; }); };
+  const mutate=(fn)=>{ setAllData(prev=>{ const next=fn(prev); debouncedSave(next,defaultYear); return next; }); };
 
   const setDefaultYearAndSave=(y)=>{
     setDefaultYear(y);
@@ -669,7 +669,7 @@ export default function App() {
     saveTimer.current=setTimeout(async()=>{
       setDriveStatus("saving");
       const payload={...allData,__settings:{defaultYear:y}};
-      try{ const r=await saveFile(payload,driveFileId); if(r.success){ if(r.fileId&&!driveFileId) setDriveFileId(r.fileId); setDriveStatus("saved"); } }
+      try{ await saveToSheets(payload); setDriveStatus("saved"); }
       catch{ setDriveStatus("error"); }
     },800);
     showToast(`Varsayılan yıl ${y} olarak kaydedildi`,"success");
