@@ -78,11 +78,13 @@ async function loadFromSheets() {
 }
 
 async function saveToSheets(data) {
-  const r = await fetch(SCRIPT_URL, {
+  // no-cors ile gönder — Apps Script CORS header dönmüyor
+  await fetch(SCRIPT_URL, {
     method: 'POST',
+    mode: 'no-cors',
     body: JSON.stringify(data)
   });
-  if (!r.ok) throw new Error('sheets_write_failed');
+  // no-cors modunda response okunamaz ama istek gidiyor
   return true;
 }
 
