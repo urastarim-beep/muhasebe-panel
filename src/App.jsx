@@ -66,28 +66,21 @@ const SEED_2026 = {
 const INITIAL_ALL_DATA = { 2026: SEED_2026 };
 
 
-// ─── Google Sheets Config ─────────────────────────────────────────────────────
-const SHEET_ID = '1bfv4hrtrUJr5L6mHJi9LTtIZcOBYA7YL5vMh0TV0PtI';
-const API_KEY  = 'AIzaSyDWAcNRKmgfY-ro0KtpMh2f9BKxdKf7B4w';
-const RANGE    = 'Sayfa1!A1';
-const BASE     = 'https://sheets.googleapis.com/v4/spreadsheets';
+// ─── Google Apps Script Config ───────────────────────────────────────────────
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby0yeRi3OWatr6qYWoZZ8TXXoCIYNljeyc-4iRxFC11Oc5c19R5lMe9eEJ4xG1F3DJVMg/exec';
 
 async function loadFromSheets() {
-  const url = `${BASE}/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
-  const r = await fetch(url);
+  const r = await fetch(SCRIPT_URL);
   if (!r.ok) throw new Error('sheets_read_failed');
-  const d = await r.json();
-  const raw = d.values?.[0]?.[0];
-  if (!raw) return null;
-  return JSON.parse(raw);
+  const text = await r.text();
+  if (!text || text === '{}') return null;
+  return JSON.parse(text);
 }
 
 async function saveToSheets(data) {
-  const url = `${BASE}/${SHEET_ID}/values/${RANGE}?valueInputOption=RAW&key=${API_KEY}`;
-  const r = await fetch(url, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ range: RANGE, majorDimension: 'ROWS', values: [[JSON.stringify(data)]] })
+  const r = await fetch(SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify(data)
   });
   if (!r.ok) throw new Error('sheets_write_failed');
   return true;
