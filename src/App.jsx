@@ -481,9 +481,109 @@ function SettingsPanel({ allData, activeYear, defaultYear, onSetDefaultYear, onA
 }
 
 // ─── PaymentModal ─────────────────────────────────────────────────────────────
+
+// ─── Para yazıya dökme ────────────────────────────────────────────────────────
+function paraYaziya(sayi) {
+  const birler = ['','BİR','İKİ','ÜÇ','DÖRT','BEŞ','ALTI','YEDİ','SEKİZ','DOKUZ'];
+  const onlar = ['','ON','YİRMİ','OTUZ','KIRK','ELLİ','ALTMIŞ','YETMİŞ','SEKSEN','DOKSAN'];
+  const binler = ['','BİN','MİLYON','MİLYAR'];
+  if(sayi===0) return 'SIFIR';
+  let sonuc='', gruplar=[], n=Math.floor(Math.abs(sayi));
+  while(n>0){ gruplar.push(n%1000); n=Math.floor(n/1000); }
+  for(let i=gruplar.length-1;i>=0;i--){
+    let g=gruplar[i]; if(g===0) continue;
+    let gs='';
+    if(g>=100){ gs+=birler[Math.floor(g/100)]+'YÜZ'; g%=100; }
+    if(g>=10){ gs+=onlar[Math.floor(g/10)]; g%=10; }
+    if(g>0){ gs+=birler[g]; }
+    if(i===1&&gruplar[i]===1) gs='';
+    sonuc+=gs+(i>0?binler[i]:'');
+  }
+  return sonuc+' TÜRK LİRASI';
+}
+
+// ─── Makbuz Modal ─────────────────────────────────────────────────────────────
+function ReceiptModal({client, month, year, amount, date, onClose}) {
+  const monthIdx = MONTHS.indexOf(month);
+  const donem = (monthIdx+1) + '/' + year;
+  const tarih = date ? new Date(date).toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit',year:'numeric'}) : new Date().toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const yalniz = paraYaziya(amount||0);
+  const amountFmt = (amount||0).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+' ₺';
+
+  const handleWhatsApp = () => {
+    const text = encodeURIComponent(
+      'MUHASEBE ÖDEME BİLDİRİM MAKBUZU\n\n'+
+      'Müşteri: '+client.name+'\n'+
+      'Dönem: '+donem+'\n'+
+      'Açıklama: Muhasebe Ücreti\n'+
+      'Tutar: '+amountFmt+'\n'+
+      'Yalnız: '+yalniz+'\n'+
+      'Tarih: '+tarih
+    );
+    window.open('https://wa.me/?text='+text,'_blank');
+  };
+
+  return(
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.85)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2000,backdropFilter:'blur(4px)',padding:16}}>
+      <div style={{background:'#fff',borderRadius:16,width:'100%',maxWidth:420,boxShadow:'0 32px 80px rgba(0,0,0,.6)',overflow:'hidden'}}>
+        <div style={{background:'#1a2744',padding:'12px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <span style={{color:'#fff',fontWeight:700,fontSize:14}}>Makbuz Önizleme</span>
+          <button onClick={onClose} style={{background:'transparent',border:'none',color:'#fff',fontSize:20,cursor:'pointer',lineHeight:1}}>×</button>
+        </div>
+        <div style={{padding:16,background:'#fff'}}>
+          <div style={{background:'#1a2744',borderRadius:8,padding:'12px 16px',display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+            <span style={{color:'#fff',fontWeight:800,fontSize:12,letterSpacing:.3}}>MUHASEBE ÖDEME BİLDİRİM MAKBUZU</span>
+            <div style={{textAlign:'right',flexShrink:0,marginLeft:8}}>
+              <div style={{fontSize:9,color:'#a0b4d0',letterSpacing:1}}>TARİH</div>
+              <div style={{fontSize:13,color:'#fff',fontWeight:700}}>{tarih}</div>
+            </div>
+          </div>
+          <div style={{border:'1px solid #e2e8f0',borderRadius:8,padding:'10px 14px',marginBottom:10}}>
+            <div style={{fontSize:9,color:'#94a3b8',letterSpacing:1.5,marginBottom:4}}>MÜŞTERİ</div>
+            <div style={{fontSize:16,fontWeight:800,color:'#1a2744'}}>{client.name}</div>
+          </div>
+          <div style={{border:'1px solid #e2e8f0',borderRadius:8,overflow:'hidden',marginBottom:10}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 2fr auto',background:'#f8fafc',padding:'8px 14px',borderBottom:'1px solid #e2e8f0',gap:8}}>
+              <span style={{fontSize:11,fontWeight:700,color:'#64748b'}}>DÖNEM</span>
+              <span style={{fontSize:11,fontWeight:700,color:'#64748b'}}>AÇIKLAMA</span>
+              <span style={{fontSize:11,fontWeight:700,color:'#64748b'}}>TUTAR</span>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 2fr auto',padding:'10px 14px',alignItems:'center',gap:8}}>
+              <span style={{fontSize:13,color:'#1a2744',fontWeight:600}}>{donem}</span>
+              <span style={{fontSize:13,color:'#475569'}}>Muhasebe Ücreti</span>
+              <span style={{fontSize:13,color:'#1a2744',fontWeight:700,whiteSpace:'nowrap'}}>{amountFmt}</span>
+            </div>
+            <div style={{borderTop:'1px solid #e2e8f0',padding:'8px 14px',textAlign:'right'}}>
+              <div style={{fontSize:10,color:'#94a3b8',letterSpacing:1}}>TOPLAM</div>
+              <div style={{fontSize:15,fontWeight:800,color:'#1a2744'}}>{amountFmt}</div>
+            </div>
+          </div>
+          <div style={{border:'1px solid #e2e8f0',borderRadius:8,padding:'10px 14px'}}>
+            <div style={{fontSize:9,color:'#94a3b8',letterSpacing:1.5,marginBottom:4}}>YALNIZ:</div>
+            <div style={{fontSize:13,fontWeight:700,color:'#1a2744'}}>{yalniz}</div>
+          </div>
+        </div>
+        <div style={{padding:16,background:'#f8fafc',display:'flex',flexDirection:'column',gap:10}}>
+          <button onClick={handleWhatsApp}
+            style={{background:'#25d366',border:'none',borderRadius:10,padding:'13px',color:'#fff',fontWeight:700,fontSize:15,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:10}}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            WhatsApp ile Gönder
+          </button>
+          <button onClick={onClose}
+            style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'11px',color:'#475569',fontWeight:600,fontSize:14,cursor:'pointer'}}>
+            Kapat
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PaymentModal({client,month,year,existing,onSave,onDelete,onClose}){
   const [amount,setAmount]=useState(existing?.amount??client.fee);
   const [date,setDate]=useState(existing?.date??new Date().toISOString().slice(0,10));
+  const [showReceipt,setShowReceipt]=useState(false);
+  if(showReceipt) return <ReceiptModal client={client} month={month} year={year} amount={amount} date={date} onClose={()=>setShowReceipt(false)}/>;
   return(
     <ModalWrap>
       <div style={{fontSize:10,color:"#4b6cb7",letterSpacing:2.5,textTransform:"uppercase",marginBottom:6}}>Ödeme Kaydı</div>
@@ -492,7 +592,11 @@ function PaymentModal({client,month,year,existing,onSave,onDelete,onClose}){
       <label style={{display:"block",fontSize:10,color:"#5b6a8a",letterSpacing:1.5,textTransform:"uppercase",marginBottom:5}}>Tutar (₺)</label>
       <input type="number" value={amount} onChange={e=>setAmount(Number(e.target.value))} style={{...INP,fontSize:18,fontWeight:700,marginBottom:14}}/>
       <label style={{display:"block",fontSize:10,color:"#5b6a8a",letterSpacing:1.5,textTransform:"uppercase",marginBottom:5}}>Ödeme Tarihi</label>
-      <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={{...INP,marginBottom:22}}/>
+      <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={{...INP,marginBottom:14}}/>
+      <button onClick={()=>setShowReceipt(true)}
+        style={{width:"100%",background:"#0f1e3d",border:"1px solid #2d4a7a",borderRadius:9,padding:"10px",color:"#7ba7f7",fontWeight:600,fontSize:13,cursor:"pointer",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+        🧾 Makbuz Oluştur
+      </button>
       <div style={{display:"flex",gap:8}}>
         <button onClick={()=>onSave({amount,date:date||null})} style={{flex:1,background:"linear-gradient(135deg,#16a34a,#15803d)",border:"none",borderRadius:9,padding:"11px 0",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer"}}>Kaydet</button>
         {existing&&<button onClick={onDelete} style={{background:"#2a1515",border:"1px solid #7f1d1d",borderRadius:9,padding:"11px 14px",color:"#ef4444",fontWeight:700,cursor:"pointer"}}>Sil</button>}
