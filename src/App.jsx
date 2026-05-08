@@ -516,6 +516,7 @@ function PaymentCell({payment,month,year,fee,onClick}){
     </button>
   );
   const ok=!!payment.date;
+  const diffAmount = payment.amount && fee && payment.amount !== fee;
   return(
     <button onClick={onClick} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
       style={{width:"100%",minWidth:76,padding:"5px 6px",opacity:hov?.8:1,
@@ -523,9 +524,12 @@ function PaymentCell({payment,month,year,fee,onClick}){
         borderRadius:7,cursor:"pointer",transition:"opacity .15s",display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
       <div style={{display:"flex",alignItems:"center",gap:4}}>
         <span style={{width:5,height:5,borderRadius:"50%",background:ok?"#22c55e":"#f97316",flexShrink:0}}/>
-        <span style={{fontSize:11,fontWeight:700,color:ok?"#4ade80":"#fb923c",whiteSpace:"nowrap"}}>{payment.amount?.toLocaleString("tr-TR")} ₺</span>
+        <span style={{fontSize:11,fontWeight:700,color:diffAmount?"#fbbf24":(ok?"#4ade80":"#fb923c"),whiteSpace:"nowrap"}}>
+          {diffAmount&&<span style={{marginRight:2}}>⚠</span>}
+          {payment.amount?.toLocaleString("tr-TR")} ₺
+        </span>
       </div>
-      {ok  &&<div style={{fontSize:9,color:"#166534"}}>{fmtD(payment.date)}</div>}
+      {ok  &&<div style={{fontSize:9,color:diffAmount?"#92400e":"#166534"}}>{fmtD(payment.date)}</div>}
       {!ok &&<div style={{fontSize:9,color:"#9a3412"}}>tarih yok</div>}
     </button>
   );
