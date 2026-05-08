@@ -68,7 +68,7 @@ const INITIAL_ALL_DATA = { 2026: SEED_2026 };
 
 // ─── Supabase Config ─────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://wcyjarhtsacxlrqdxnpa.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_YBm_pYaLDkMQ9zDpZH0D9Q_aeTBQd4B';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndjeWphcmh0c2FjeGxycWR4bnBhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyMjM5MDksImV4cCI6MjA5Mzc5OTkwOX0.roD51GRx4FDqXG_EWQlqqeJobj8GxT2LRKr_BcV1MkQ';
 const TABLE = 'muhasebe_data';
 
 async function loadFromSheets() {
