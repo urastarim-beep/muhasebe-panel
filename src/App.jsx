@@ -66,27 +66,36 @@ const SEED_2026 = {
 const INITIAL_ALL_DATA = { 2026: SEED_2026 };
 
 
-// ─── Google Apps Script Config ───────────────────────────────────────────────
-const SCRIPT_URL = '/api/sheets';
+// ─── Supabase Config ─────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://wcyjarhtsacxlrqdxnpa.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_YBm_pYaLDkMQ9zDpZH0D9Q_aeTBQd4B';
+const TABLE = 'muhasebe_data';
 
 async function loadFromSheets() {
-  const r = await fetch(SCRIPT_URL);
-  if (!r.ok) throw new Error('sheets_read_failed');
-  const text = await r.text();
-  if (!text || text === '{}') return null;
-  const data = JSON.parse(text);
-  localStorage.setItem('muhasebe_data', text);
-  return data;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?select=data&order=id.desc&limit=1`, {
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY
+    }
+  });
+  if (!r.ok) throw new Error('supabase_read_failed');
+  const rows = await r.json();
+  if (!rows || rows.length === 0) return null;
+  return JSON.parse(rows[0].data);
 }
 
 async function saveToSheets(data) {
-  localStorage.setItem('muhasebe_data', JSON.stringify(data));
-  const r = await fetch(SCRIPT_URL, {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify({ data: JSON.stringify(data) })
   });
-  if (!r.ok) throw new Error('sheets_write_failed');
+  if (!r.ok) throw new Error('supabase_write_failed');
   return true;
 }
 
