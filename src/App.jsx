@@ -67,39 +67,26 @@ const INITIAL_ALL_DATA = { 2026: SEED_2026 };
 
 
 // ─── Google Apps Script Config ───────────────────────────────────────────────
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby0yeRi3OWatr6qYWoZZ8TXXoCIYNljeyc-4iRxFC11Oc5c19R5lMe9eEJ4xG1F3DJVMg/exec';
+const SCRIPT_URL = '/api/sheets';
 
 async function loadFromSheets() {
-  // Önce localStorage'dan oku (anlık)
-  const local = localStorage.getItem('muhasebe_data');
-  if (local) {
-    // Arka planda Sheets'ten güncellemeyi dene
-    setTimeout(async () => {
-      try {
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        document.body.appendChild(iframe);
-        setTimeout(() => document.body.removeChild(iframe), 5000);
-      } catch(e) {}
-    }, 2000);
-    return JSON.parse(local);
-  }
-  return null;
+  const r = await fetch(SCRIPT_URL);
+  if (!r.ok) throw new Error('sheets_read_failed');
+  const text = await r.text();
+  if (!text || text === '{}') return null;
+  const data = JSON.parse(text);
+  localStorage.setItem('muhasebe_data', text);
+  return data;
 }
 
 async function saveToSheets(data) {
-  // localStorage'a kaydet (anlık, güvenilir)
   localStorage.setItem('muhasebe_data', JSON.stringify(data));
-  // Sheets'e de gönder (arka planda, cihazlar arası sync için)
-  try {
-    await fetch(SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      body: JSON.stringify(data)
-    });
-  } catch(e) {
-    // Sheets hatası olsa da localStorage'a kaydedildi
-  }
+  const r = await fetch(SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!r.ok) throw new Error('sheets_write_failed');
   return true;
 }
 
