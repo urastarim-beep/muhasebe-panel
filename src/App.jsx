@@ -72,20 +72,28 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const TABLE = 'muhasebe_data';
 
 async function loadFromSheets() {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?select=data&order=id.desc&limit=1`, {
+  const r = await fetch(SUPABASE_URL + '/rest/v1/' + TABLE + '?select=data&order=id.desc&limit=1', {
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json'
+    }
+  });
+  const rows = await r.json();
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  return JSON.parse(rows[0].data);
+}
+
+async function saveToSheets(data) {
+  // Önce mevcut kaydı sil, sonra yeni kayıt ekle
+  await fetch(SUPABASE_URL + '/rest/v1/' + TABLE + '?id=gt.0', {
+    method: 'DELETE',
     headers: {
       'apikey': SUPABASE_KEY,
       'Authorization': 'Bearer ' + SUPABASE_KEY
     }
   });
-  if (!r.ok) throw new Error('supabase_read_failed');
-  const rows = await r.json();
-  if (!rows || rows.length === 0) return null;
-  return JSON.parse(rows[0].data);
-}
-
-async function saveToSheets(data) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}`, {
+  const r = await fetch(SUPABASE_URL + '/rest/v1/' + TABLE, {
     method: 'POST',
     headers: {
       'apikey': SUPABASE_KEY,
