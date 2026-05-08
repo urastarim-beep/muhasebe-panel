@@ -1037,7 +1037,7 @@ export default function App() {
         {toast.msg}
       </div>}
 
-      <style>{`*{box-sizing:border-box}input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.5);cursor:pointer}select option{background:#161d2e}::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:#0a0d14}::-webkit-scrollbar-thumb{background:#1e2a3f;border-radius:3px}`}</style>
+      <style>{`*{box-sizing:border-box;margin:0;padding:0}body,html{background:#0a0d14!important;overflow-x:hidden}input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.5);cursor:pointer}select option{background:#161d2e}::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:#0a0d14}::-webkit-scrollbar-thumb{background:#1e2a3f;border-radius:3px}`}</style>
     </div>
   );
 }
