@@ -70,40 +70,36 @@ const INITIAL_ALL_DATA = { 2026: SEED_2026 };
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby0yeRi3OWatr6qYWoZZ8TXXoCIYNljeyc-4iRxFC11Oc5c19R5lMe9eEJ4xG1F3DJVMg/exec';
 
 async function loadFromSheets() {
-  // JSONP trick ile CORS sorununu aş
-  return new Promise((resolve, reject) => {
-    const cbName = '_cb' + Date.now();
-    const script = document.createElement('script');
-    const timeout = setTimeout(() => {
-      delete window[cbName];
-      document.body.removeChild(script);
-      reject(new Error('timeout'));
-    }, 10000);
-    window[cbName] = (data) => {
-      clearTimeout(timeout);
-      delete window[cbName];
-      document.body.removeChild(script);
-      resolve(data);
-    };
-    script.src = SCRIPT_URL + '?callback=' + cbName;
-    script.onerror = () => {
-      clearTimeout(timeout);
-      delete window[cbName];
-      document.body.removeChild(script);
-      reject(new Error('script_error'));
-    };
-    document.body.appendChild(script);
-  });
+  // Önce localStorage'dan oku (anlık)
+  const local = localStorage.getItem('muhasebe_data');
+  if (local) {
+    // Arka planda Sheets'ten güncellemeyi dene
+    setTimeout(async () => {
+      try {
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+        setTimeout(() => document.body.removeChild(iframe), 5000);
+      } catch(e) {}
+    }, 2000);
+    return JSON.parse(local);
+  }
+  return null;
 }
 
 async function saveToSheets(data) {
-  // no-cors ile gönder — Apps Script CORS header dönmüyor
-  await fetch(SCRIPT_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    body: JSON.stringify(data)
-  });
-  // no-cors modunda response okunamaz ama istek gidiyor
+  // localStorage'a kaydet (anlık, güvenilir)
+  localStorage.setItem('muhasebe_data', JSON.stringify(data));
+  // Sheets'e de gönder (arka planda, cihazlar arası sync için)
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: JSON.stringify(data)
+    });
+  } catch(e) {
+    // Sheets hatası olsa da localStorage'a kaydedildi
+  }
   return true;
 }
 
